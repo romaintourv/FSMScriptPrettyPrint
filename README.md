@@ -13,3 +13,7 @@ This repository contains Python scripts for correcting spacing issues in Python 
 ## Mongooses.py
 
 `Mongooses.py` corrects an entire folder. It will only correct Python scripts. The output will be a "Clean" folder in that directory. In it will be two folders: "List of states" folder for all .docx files and "Clean scripts" folder for all clean scripts. The names of all of these files will follow the same naming pattern as the resulting files from Mongoose.py. Note: an extra "\" should be added to each "\" in the directory path as "\" is an escape character in Python.
+
+# test.py
+
+`test.py` is an example file for you to test `FSM.py` if you are unsure. Feel free to change `test.py` to see what the FSM can do.
