@@ -1,3 +1,3 @@
 from FSM import *
-fsm = FSM("nothing.py")
+fsm = FSM("your_file_here.py")
 fsm.fixFile()

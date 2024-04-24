@@ -1,7 +1,7 @@
 import os
 from FSM import *
 
-directory = "C:\\Users\\Romain\\OneDrive\\Documents\\Trinity Western\\5th Year\\Thesis (CMPT 410)"
+directory = "C: \\your\\directory\\here" # ensure that each "\" has an extra "\" as they are escape characters
 
 cleanFolder = "Clean"
 

@@ -94,13 +94,15 @@ class FSM:
     '''
 
     def __init__(self, file) -> None:
-        self.file = file
+        self.file = file # file to be looked at
         self.charIndex = 1 # to know where convention is not respected
         self.lineIndex = 1
         self.sequence = ["start"]
         self.state = "start"
         self.currentCharacter = ""
-        self.spaceCounter = 0
+        self.spaceCounter = 0 # to keep track of how many indentations there are
+        
+        # categories of characters
         self.tokens = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
         "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
@@ -108,46 +110,42 @@ class FSM:
         "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
         "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
         "U", "V", "W", "X", "Y", "Z", ".", "_"]
-        self.document = Document()
-        self.prevTabLen = 0
-        self.docTabAmount = 0
-        self.unsetDocTabAmount = True
-        self.indentLength = 4
+        self.operators = ['+', '-', '*', '/', '%', '=', '>', '<', '!', '&', '|', '^']
+        self.openParentheses = ["(", "[", "{"]
+        self.closeParentheses = [")", "]", "}"]
+        self.separator = [",", ";"]
+
+        self.document = Document() # document for list of states
+        self.prevTabLen = 0 # verifies whether current line has too many indentations relative to the previous indentation
+        self.docTabAmount = 0 # how many spaces or tabs the scripts uses for each indentation
+        self.unsetDocTabAmount = True # to be turned false once docTabAmount has been determined for that script
+        self.indentLength = 4 # the indent length the user would like to have for a particular script or project -- default is 4
+        self.newline = True # to determine if a space is an inline space or if it is part of an indentation
+        self.xtraTab = False # to determine if a line has to many indents relative to previous line
+        self.xtraTabSpace = False # to determine whether a line has an uneven multiple of docTabAmount
         
         # Issues fixed counts
         self.xtraSpaceCount = 0
         self.xtraLineCount = 0
         self.needSpaceCount = 0
         self.xtraIndentCount = 0
+        self.unknownStates = 0
 
-        self.newline = True
         # Conditions for transtions between states
         self.toTokenStates = ["start", "in token", "found newline 1", "found newline 2",
             "found extra line", "found extra space", "found open parentheses", "found space"]
         self.toNeedASpaceStates = ["found operator", "found comma", "found close parentheses", "found colon"]
-
         self.foundXtraSpaceStates = ["found open parentheses", "found extra space"]
         self.foundXtraSpaceChars = [")", ",", ":", '\n', ";", "]", "}"]
-
         self.foundXtraLineStates = ["start", "found newline 2", "found extra line", "found tab"]
-
-        self.operators = ['+', '-', '*', '/', '%', '=', '>', '<', '!', '&', '|', '^']
-        self.openParentheses = ["(", "[", "{"]
-        self.closeParentheses = [")", "]", "}"]
-        self.separator = [",", ";"]
-
         self.toFoundNewLineStates = ["found colon", "in token", "in comment", "need a space", "found extra space", "out string", "found comma", "found open parentheses", "found close parentheses", "found operator"]
         self.toFoundSpaceStates = ["in token", "need a space", "found operator", "found space", "out string", "found colon", "found close parentheses", "found comma"]
-
         self.toFoundTabStates = ["found newline 1", "found newline 2", "found tab", "found extra line"]
-
         self.toFoundColonStates = ["found close parentheses", "in token", "found open parentheses", "out string"]
         self.toFoundCloseParenthesesStates = ["in token", "found open parentheses", "out string", "found close parentheses", "found tab", "found newline 1", "found newline 2"]
         self.toFoundOpenParenthesesStates = ["in token", "found space", "found open parentheses", "found tab", "found newline 1", "found newline 2"]
         self.toFoundOperatorStates = ["found space", "found operator", "need a space", "found open parentheses"]
 
-        self.xtraTab = False
-        self.xtraTabSpace = False
 
     def currentState(self):
         '''
@@ -163,15 +161,14 @@ class FSM:
             self.lineIndex += 1
             self.charIndex = 1
             self.newline = True
-            if self.unsetDocTabAmount:
+            if self.unsetDocTabAmount: # set doc tab amount to zero if its an empty line
                 self.docTabAmount = 0
         elif currentChar != "\n" and currentChar != " " and currentChar != "\t" and self.newline == True:
             self.charIndex += 1
-            self.newline = False
-            if self.unsetDocTabAmount and self.docTabAmount != 0:
+            self.newline = False # all spaces will now not be part of an indent
+            if self.unsetDocTabAmount and self.docTabAmount != 0: # doc tab amount has been set
                 self.unsetDocTabAmount = False
-                print(self.docTabAmount)
-        elif (currentChar == " " or currentChar == "\t") and self.newline == True and self.unsetDocTabAmount:
+        elif (currentChar == " " or currentChar == "\t") and self.newline == True and self.unsetDocTabAmount: # set the script indentation amount
             self.charIndex += 1
             self.docTabAmount += 1
         else:
@@ -352,24 +349,27 @@ class FSM:
         
         else:
             self.state = "********"
+            self.unknownStates += 1
             flag = self.state + " " + str(self.lineIndex) + " " + str(self.charIndex)
             self.sequence.append(flag)
             self.sequence.append(self.state)
             
 
     def fixFile(self):
+
         file = open(self.file, "r")
         newFileName = self.file.split(".")
         newFile = open(newFileName[0] + " clean." + newFileName[1], "w")
 
-        charSequence = ""
+        charSequence = "" # to keep track of characters that may not be added to the new script
 
         while True:
             self.currentCharacter = file.read(1)
-            if not self.currentCharacter:
+            if not self.currentCharacter: # FSM has finished the script
                 self.state = "end of file"
                 self.sequence.append(self.state)
                 break
+            
             self.updateState()
 
             # adding space to new file
@@ -378,12 +378,14 @@ class FSM:
             # do not add new line if extra line
             elif self.sequence[- 1][: len("found extra line")] == "found extra line":
                 charSequence = ""
+            # do not add the spaces or indents unless cleared. Instead, add to charSequence
             elif self.sequence[- 1] == "found tab" or self.sequence[- 1] == "found space":
                 if self.currentCharacter == " ":
                     charSequence += self.currentCharacter
-                else:
+                else: # if char == a tab (\t) add a space instead
                     charSequence += (" " * self.indentLength)
-                
+            
+            # do not add extra spaces
             elif self.sequence[- 1][: len("found extra space")] == "found extra space":
                 if self.currentCharacter == " " or self.currentCharacter == "\t":
                     pass
@@ -419,3 +421,10 @@ class FSM:
         print(f"{self.file} convention summary:")
         print(f"{self.xtraLineCount} unnecessary line(s) found.\n{self.xtraIndentCount} unnecessary indent(s) found.\n{self.xtraSpaceCount} unnecessary space(s) found. \n{self.needSpaceCount} space(s) needed.")
         print(f"{self.xtraIndentCount + self.needSpaceCount + self.xtraLineCount + self.xtraSpaceCount} changes made.")
+
+        if self.unknownStates > 0:
+            print(f"{self.unknownStates} unknown character(s) found in the script.")
+
+        # Warning (uneven number of " or ' characters found, leading to this error)
+        if self.sequence[- 2] == "in string":
+            print(f"Warning, {self.file} has an uneven amount of quotation marks (\" or \') leading to non-string portions of the script be interpretted as strings.\nPlease review the changes made.")
