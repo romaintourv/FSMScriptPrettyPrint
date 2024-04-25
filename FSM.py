@@ -251,11 +251,12 @@ class FSM:
 
             if -(-self.spaceCounter // self.docTabAmount) > (self.prevTabLen + 1):
                 self.xtraTab = True
+                
+                # Remove extra spaces from space counter for proper space comparison in the next line
+                self.spaceCounter = self.prevTabLen * self.docTabAmount
+            
             if self.spaceCounter % self.docTabAmount != 0:
                 self.xtraTabSpace = True
-
-            # Remove extra spaces from space counter for proper space comparison in the next line
-            self.spaceCounter = self.prevTabLen * self.docTabAmount
 
             if currentChar == ":":
                 self.state = "found colon"
