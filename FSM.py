@@ -101,7 +101,6 @@ class FSM:
         self.state = "start"
         self.currentCharacter = ""
         self.spaceCounter = 0 # to keep track of how many indentations there are
-        
         # categories of characters
         self.tokens = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
@@ -123,7 +122,6 @@ class FSM:
         self.newline = True # to determine if a space is an inline space or if it is part of an indentation
         self.xtraTab = False # to determine if a line has to many indents relative to previous line
         self.xtraTabSpace = False # to determine whether a line has an uneven multiple of docTabAmount
-        
         # Issues fixed counts
         self.xtraSpaceCount = 0
         self.xtraLineCount = 0
@@ -143,19 +141,19 @@ class FSM:
         self.toFoundTabStates = ["found newline 1", "found newline 2", "found tab", "found extra line"]
         self.toFoundColonStates = ["found close parentheses", "in token", "found open parentheses", "out string"]
         self.toFoundCloseParenthesesStates = ["in token", "found open parentheses", "out string", "found close parentheses", "found tab", "found newline 1", "found newline 2"]
-        self.toFoundOpenParenthesesStates = ["in token", "found space", "found open parentheses", "found tab", "found newline 1", "found newline 2"]
+        self.toFoundOpenParenthesesStates = ["in token", "found space", "found open parentheses", "found tab", "found newline 1", "found newline 2", "found close parentheses"]
         self.toFoundOperatorStates = ["found space", "found operator", "need a space", "found open parentheses"]
-
 
     def currentState(self):
         '''
         Get the state the FSM is currently
         '''
         return self.state
-    
-    def updateState(self):
-
-        currentChar = self.currentCharacter
+    def updatePositionOfFSM(self, currentChar):
+        '''
+        Will update the position of the FSM as well as calculate the indentation length
+        of the current script
+        '''
         # Update position of FSM
         if currentChar == "\n":
             self.lineIndex += 1
@@ -173,6 +171,9 @@ class FSM:
             self.docTabAmount += 1
         else:
             self.charIndex += 1
+    def updateState(self, currentChar):
+
+        self.updatePositionOfFSM(currentChar)
 
         # In comment state
         if currentChar == "#" or (self.currentState() == "in comment" and currentChar != "\n"):
@@ -184,7 +185,6 @@ class FSM:
             self.state = "in string"
             self.sequence.append(self.state)
             return
-            
         # Need a space state by token
         elif self.currentState() in self.toNeedASpaceStates and currentChar in self.tokens:
             self.state = "need a space"
@@ -229,6 +229,7 @@ class FSM:
                 self.state = "found colon"
             elif currentChar in self.separator:
                 self.state = "found comma"
+
             elif currentChar in self.closeParentheses:
                 self.state = "found close parentheses"
             elif currentChar in self.tokens:
@@ -243,18 +244,16 @@ class FSM:
                 self.state = "found open parentheses"
 
         # Found extra tab
-        elif (self.currentState() == "found tab" and (currentChar != " " and currentChar != "\n" and currentChar != "\t")) and (-(-self.spaceCounter // self.docTabAmount) > (self.prevTabLen + 1) or self.spaceCounter % self.docTabAmount != 0):
+        elif (self.currentState() == "found tab" and (currentChar != " " and currentChar != "\n" and currentChar != "\t")) and (- (- self.spaceCounter // self.docTabAmount) > (self.prevTabLen + 1) or self.spaceCounter % self.docTabAmount != 0):
             self.state = "found extra tab"
             self.xtraIndentCount += 1
             flag = self.state + " " + str(self.lineIndex) + " " + str(self.charIndex)
             self.sequence.append(flag)
 
-            if -(-self.spaceCounter // self.docTabAmount) > (self.prevTabLen + 1):
+            if - (- self.spaceCounter // self.docTabAmount) > (self.prevTabLen + 1):
                 self.xtraTab = True
-                
                 # Remove extra spaces from space counter for proper space comparison in the next line
                 self.spaceCounter = self.prevTabLen * self.docTabAmount
-            
             if self.spaceCounter % self.docTabAmount != 0:
                 self.xtraTabSpace = True
 
@@ -263,6 +262,7 @@ class FSM:
             elif currentChar in self.separator:
                 self.state = "found comma"
             elif currentChar in self.closeParentheses:
+
                 self.state = "found close parentheses"
             elif currentChar in self.openParentheses:
                 self.state = "found open parentheses"
@@ -280,7 +280,7 @@ class FSM:
             self.spaceCounter = 0
 
         # In token state
-        elif currentChar in self.tokens and (self.currentState() in self.toTokenStates or (self.currentState() == "found tab" and -(-self.spaceCounter // self.docTabAmount) <= (self.prevTabLen + 1) and self.spaceCounter % self.docTabAmount == 0)):
+        elif currentChar in self.tokens and (self.currentState() in self.toTokenStates or (self.currentState() == "found tab" and - (- self.spaceCounter // self.docTabAmount) <= (self.prevTabLen + 1) and self.spaceCounter % self.docTabAmount == 0)):
             self.state = "in token"
             self.sequence.append(self.state)
 
@@ -299,7 +299,7 @@ class FSM:
             self.state = "found newline 1"
             self.sequence.append(self.state)
             if self.docTabAmount != 0:
-                self.prevTabLen = -(-self.spaceCounter // self.docTabAmount)
+                self.prevTabLen = - (- self.spaceCounter // self.docTabAmount)
             self.spaceCounter = 0
 
         # Found newline 2
@@ -323,8 +323,6 @@ class FSM:
         elif self.currentState() in self.toFoundOpenParenthesesStates and currentChar in self.openParentheses:
             self.state = "found open parentheses"
             self.sequence.append(self.state)
-            
-
         # Found close parentheses state
         elif self.currentState() in self.toFoundCloseParenthesesStates and currentChar in self.closeParentheses:
             self.state = "found close parentheses"
@@ -347,20 +345,19 @@ class FSM:
         elif self.currentState() == "in string" and (currentChar == "\'" or currentChar == '\"'):
             self.state = "out string"
             self.sequence.append(self.state)
-        
         else:
             self.state = "********"
             self.unknownStates += 1
             flag = self.state + " " + str(self.lineIndex) + " " + str(self.charIndex)
             self.sequence.append(flag)
             self.sequence.append(self.state)
-            
-
     def fixFile(self):
 
         file = open(self.file, "r")
         newFileName = self.file.split(".")
         newFile = open(newFileName[0] + " clean." + newFileName[1], "w")
+
+        assert newFileName[1] == "py", "The file presented should be a Python file."
 
         charSequence = "" # to keep track of characters that may not be added to the new script
 
@@ -369,9 +366,10 @@ class FSM:
             if not self.currentCharacter: # FSM has finished the script
                 self.state = "end of file"
                 self.sequence.append(self.state)
+
+                assert self.sequence[- 2] != "in string", "File contains uneven number of quotation marks. To properly correct the script, please have all quotation marks be closed, even in comments."
                 break
-            
-            self.updateState()
+            self.updateState(self.currentCharacter)
 
             # adding space to new file
             if self.sequence[- 1][: len("need a space")] == "need a space":
@@ -385,7 +383,6 @@ class FSM:
                     charSequence += self.currentCharacter
                 else: # if char == a tab (\t) add a space instead
                     charSequence += (" " * self.indentLength)
-            
             # do not add extra spaces
             elif self.sequence[- 1][: len("found extra space")] == "found extra space":
                 if self.currentCharacter == " " or self.currentCharacter == "\t":
@@ -395,7 +392,7 @@ class FSM:
                     newFile.write(self.currentCharacter)
             elif self.sequence[- 1][: len("found extra tab")] == "found extra tab":
                 if self.xtraTabSpace:
-                    charSequence = " " * self.indentLength * (-(-self.spaceCounter // self.docTabAmount))
+                    charSequence = " " * self.indentLength * (- (- self.spaceCounter // self.docTabAmount))
 
                 if self.xtraTab:
                     charSequence = " " * self.indentLength * (self.prevTabLen + 1)
@@ -418,7 +415,7 @@ class FSM:
         newFile.close()
         self.document.add_paragraph(self.sequence)
         self.document.save(newFileName[0] + " clean list of states.docx")
-        
+
         print(f"{self.file} convention summary:")
         print(f"{self.xtraLineCount} unnecessary line(s) found.\n{self.xtraIndentCount} unnecessary indent(s) found.\n{self.xtraSpaceCount} unnecessary space(s) found. \n{self.needSpaceCount} space(s) needed.")
         print(f"{self.xtraIndentCount + self.needSpaceCount + self.xtraLineCount + self.xtraSpaceCount} changes made.")
